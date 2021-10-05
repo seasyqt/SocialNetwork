@@ -1,0 +1,142 @@
+package org.skillbox.socnet.service.friends;
+
+import lombok.AllArgsConstructor;
+import org.apache.log4j.Logger;
+import org.skillbox.socnet.api.dto.DTOError;
+import org.skillbox.socnet.api.dto.DTOErrorDescription;
+import org.skillbox.socnet.api.dto.DTOMessage;
+import org.skillbox.socnet.api.dto.DTOSuccessfully;
+import org.skillbox.socnet.api.response.error.ErrorResponse;
+import org.skillbox.socnet.model.entity.Friendship;
+import org.skillbox.socnet.model.entity.User;
+import org.skillbox.socnet.model.entity.enums.FriendshipStatus;
+import org.skillbox.socnet.model.entity.enums.NotificationType;
+import org.skillbox.socnet.model.repository.FriendshipRepository;
+import org.skillbox.socnet.model.repository.UserRepository;
+import org.skillbox.socnet.service.NotificationApi;
+import org.skillbox.socnet.service.UserService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+@Service
+@AllArgsConstructor
+public class SetFriendshipService {
+    private final UserRepository userRepository;
+    private final FriendshipRepository friendshipRepository;
+    private final UserService userService;
+    private final Logger log = Logger.getLogger(SetFriendshipService.class.getName());
+    private final NotificationApi notificationApi;
+
+    public ResponseEntity<?> createResponse(Integer id, FriendshipStatus status) {
+
+        Optional<User> friend = userRepository.findById(id);
+        Friendship friendship;
+        User user;
+        User dstUser;
+
+        //checking if the user is authorized
+        try {
+            user = userService.getCurrentUser();
+        } catch (UsernameNotFoundException ex) {
+            log.error(DTOErrorDescription.UNAUTHORIZED.get());
+            return ResponseEntity.status(401).body(new ErrorResponse(
+                    DTOError.UNAUTHORIZED.get(),
+                    DTOErrorDescription.UNAUTHORIZED.get()));
+        }
+
+        //checking if the friend is get
+        if (friend.isEmpty()) {
+            log.error(DTOErrorDescription.BAD_CREDENTIALS.get());
+            return ResponseEntity.status(400).body(new ErrorResponse(
+                    DTOError.INVALID_REQUEST.get(),
+                    DTOErrorDescription.BAD_CREDENTIALS.get()));
+        }
+
+        dstUser = friend.get();
+
+        if (user.equals(dstUser)) {
+            log.error(DTOErrorDescription.BAD_CREDENTIALS.get());
+            return ResponseEntity.status(400).body(new ErrorResponse(
+                    DTOError.INVALID_REQUEST.get(),
+                    DTOErrorDescription.BAD_CREDENTIALS.get()));
+        }
+
+        //Создать или получить friendship
+        Optional<Friendship> friendshipOptional = friendshipRepository.findFriendshipForUser(user, dstUser);
+
+        if (friendshipOptional.isEmpty() && status == FriendshipStatus.UNBLOCK) {
+            return ResponseEntity.status(400).body(new ErrorResponse(
+                    DTOError.BAD_REQUEST.get(),
+                    DTOErrorDescription.BAD_REQUEST.get()));
+        }
+
+        try {
+            //If there is no friend request, create it
+            if (friendshipOptional.isEmpty()) {
+                friendship = createFriendShip(user, dstUser);
+                friendship.setStatus(status);
+            } else {
+                friendship = friendshipOptional.get();
+                //if there is a friend request, we accept it, set the Friend status
+                if (friendship.getStatus() == FriendshipStatus.REQUEST && status == FriendshipStatus.REQUEST
+                        && !friendship.getSrcUser().equals(user)) {
+                    friendship.setStatus(FriendshipStatus.FRIEND);
+                    //Set block status when users a Friends
+                } else if (status == FriendshipStatus.BLOCKED) {
+                    if (friendshipOptional.get().getStatus() != FriendshipStatus.BLOCKED) {
+                        friendshipRepository.delete(friendship);
+                        friendship.setStatus(FriendshipStatus.BLOCKED);
+                    }
+                    //unblock User
+                } else if (friendship.getStatus() == FriendshipStatus.BLOCKED && status == FriendshipStatus.UNBLOCK && !friendship.getSrcUser().equals(user)) {
+                    friendshipRepository.delete(friendship);
+                    return ResponseEntity.ok(new DTOSuccessfully(
+                            null,
+                            Instant.now().getEpochSecond(),
+                            new DTOMessage()));
+                }
+                //check blocked, declined and already friends
+                else if (friendship.getStatus() != FriendshipStatus.BLOCKED && friendship.getStatus() != FriendshipStatus.DECLINED
+                        && friendship.getStatus() != FriendshipStatus.FRIEND) {
+                    friendship.setStatus(status);
+                } else {
+                    return ResponseEntity.status(400).body(new ErrorResponse(
+                            DTOError.BAD_REQUEST.get(),
+                            DTOErrorDescription.BAD_REQUEST.get()));
+                }
+            }
+
+            friendshipRepository.save(friendship);
+
+            //EntityId сущность относительно которой создано оповещение (сообщения, добавление в друзья и т.д.)
+            if (friendship.getStatus() == FriendshipStatus.REQUEST) {
+                notificationApi.createNotification(NotificationType.FRIEND_REQUEST, friendship.getDstUser(), friendship.getSrcUser().getId());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        log.info("Successfully");
+
+        return ResponseEntity.ok(new DTOSuccessfully(
+                null,
+                Instant.now().getEpochSecond(),
+                new DTOMessage()));
+    }
+
+    private Friendship createFriendShip(User src, User dst) {
+        Friendship friendship = new Friendship();
+        friendship.setSrcUser(src);
+        friendship.setDstUser(dst);
+        friendship.setTime(LocalDateTime.now());
+
+        return friendship;
+    }
+
+}

@@ -219,7 +219,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>main.Main</mainClass>
+                            <mainClass>org.skillbox.socnet.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

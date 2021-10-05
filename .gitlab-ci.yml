@@ -1,0 +1,30 @@
+image: maven:3.6-jdk-13
+
+stages:
+  - build
+  - test
+
+maven-build:
+  stage: build
+  tags:
+    - docker
+  script:
+    - mvn package
+    - cat target/jacoco-report/index.html
+  artifacts:
+    paths:
+      - target/surefire-reports/
+      - target/jacoco-report/index.html
+    reports:
+      junit:
+        - target/surefire-reports/TEST-*.xml
+coverage_check:
+  image: alpine:latest
+  stage: test
+  tags:
+    - docker
+  script:
+    - apk add bash
+    - apk add jq
+    - apk add curl
+    - bash code-coverage.sh
