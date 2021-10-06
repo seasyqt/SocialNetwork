@@ -68,9 +68,9 @@
 
         <!--   Database dependensies     -->
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.25</version>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.24</version>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
@@ -164,7 +164,7 @@
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>7.10.0</version>
                 <configuration>
-                    <driver>com.mysql.cj.jdbc.Driver</driver>
+                    <driver>org.postgresql.Driver</driver>
                     <url>url</url>
                     <user>username</user>
                     <password>password</password>

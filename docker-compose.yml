@@ -1,0 +1,13 @@
+version: "1"
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ${CREATE_TABLES}:/docker-entrypoint-initdb.d/V1__create_entity.sql
+      - ${FOREIGN_KEY}:/docker-entrypoint-initdb.d/V2__add_foreign_key.sql
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
