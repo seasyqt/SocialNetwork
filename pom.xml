@@ -85,12 +85,12 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-maven-plugin</artifactId>
-            <version>7.10.0</version>
+            <version>8.2.1</version>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>7.10.0</version>
+            <version>8.2.1</version>
         </dependency>
 
         <!--  etc dependencies      -->
@@ -148,6 +148,12 @@
             <version>20210307</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+
 
     </dependencies>
 
@@ -162,7 +168,7 @@
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
-                <version>7.10.0</version>
+                <version>8.2.1</version>
                 <configuration>
                     <driver>org.postgresql.Driver</driver>
                     <url>url</url>
